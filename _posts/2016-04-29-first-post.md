@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "First post"
-date: 2016_04_29 19:14:00 +0100
+date: 2016-04-29 19:14:00 +0100
 ---
 
 First blog post. Next step, global domination.
