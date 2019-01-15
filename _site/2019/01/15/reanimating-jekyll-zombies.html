@@ -6,12 +6,12 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>First post</title>
-  <meta name="description" content="First blog post. Next step, global domination.- powered by Jekyll, blindly followinghank’s tutorial">
+  <title>Reanimating Jekyll Zombies</title>
+  <meta name="description" content="Back with a bang!">
 
   <link rel="stylesheet" href="/css/main.css">
-  <link rel="canonical" href="http://tmerrittsmith.github.com/2016/04/26/first-post.html">
-  <link rel="alternate" type="application/rss+xml" title="Tom Merritt Smith - Data Scientist" href="http://tmerrittsmith.github.com/feed.xml">
+  <link rel="canonical" href="http://localhost:4000/2019/01/15/reanimating-jekyll-zombies.html">
+  <link rel="alternate" type="application/rss+xml" title="Tom Merritt Smith - Data Scientist" href="http://localhost:4000/feed.xml">
 </head>
 
 
@@ -44,6 +44,8 @@
         
           
         
+          
+        
       </div>
     </nav>
 
@@ -57,14 +59,33 @@
         <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title" itemprop="name headline">First post</h1>
-    <p class="post-meta"><time datetime="2016-04-26T00:00:00+01:00" itemprop="datePublished">Apr 26, 2016</time></p>
+    <h1 class="post-title" itemprop="name headline">Reanimating Jekyll Zombies</h1>
+    <p class="post-meta"><time datetime="2019-01-15T00:00:00+00:00" itemprop="datePublished">Jan 15, 2019</time></p>
   </header>
 
   <div class="post-content" itemprop="articleBody">
-    <p>First blog post. Next step, global domination.
-- powered by <a href="http://jekyllrb.com">Jekyll</a>, blindly following
-<a href="http://jmcglone.com/guides/github-pages/">hank’s tutorial</a></p>
+    <h4 id="back-with-a-bang">Back with a bang!</h4>
+
+<p>Well, if you’re reading this then you’re interested in the beginning of the story.</p>
+
+<p>Having worked as a teacher for 7 years, I finally made the move in to data science in 2017. Naturally, the next step was to revitalise the old *.github.io and post up all of those awesome… post up one or two things that I managed to scrape together. It took another 18 months, but here we are.</p>
+
+<p>Since it took me over an hour to serve up the 2016 jekyll site, it seems appropriate to write down what I did, on my new Ubuntu 18.04.1 LTS. These steps should help once you’ve cloned down that old repo you’ve had lying around for too long.</p>
+
+<ul>
+  <li>Edit the <code class="highlighter-rouge">Gemfile.lock</code>. Right at the bottom, make sure that <code class="highlighter-rouge">BUNDLED-WITH</code> has the correct version (you can check it with <code class="highlighter-rouge">bundle version</code>)</li>
+  <li>I’m basically a linux noob, so I also had problems until I upgraded all my packages, and installed build tools (h/t computingforgeeks):
+<code class="highlighter-rouge">sudo apt upgrade
+sudo apt install make build-essential</code></li>
+  <li>I also had to <code class="highlighter-rouge">sudo apt install zlib1g-dev</code></li>
+  <li>If you’re on a new ubuntu installation, you’ll need to install jekyll, so cd into your pages directory and run <code class="highlighter-rouge">bundle install</code></li>
+  <li>Then you can run <code class="highlighter-rouge">bundle update</code> to make sure all the gems are… <em>sparkly and up to date</em></li>
+</ul>
+
+<p>If you’re good to go, then throw out a <code class="highlighter-rouge">bundle exec jekyll serve</code> and that’s it.
+Back. In. The. Game.</p>
+
+<p>Game on.</p>
 
   </div>
 
