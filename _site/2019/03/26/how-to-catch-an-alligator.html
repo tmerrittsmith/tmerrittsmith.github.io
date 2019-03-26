@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>How To Catch An Alligator</title>
+  <meta name="description" content="Post script: This analysis was originally created in 2017, some 6 months before I actually got a job as a data scientist. This post is part of clearing a bac...">
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://localhost:4000/2019/03/26/how-to-catch-an-alligator.html">
+  <link rel="alternate" type="application/rss+xml" title="Tom Merritt Smith - Data Scientist" href="http://localhost:4000/feed.xml">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">Tom Merritt Smith - Data Scientist</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/about/">About</a>
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">How To Catch An Alligator</h1>
+    <p class="post-meta"><time datetime="2019-03-26T00:00:00+00:00" itemprop="datePublished">Mar 26, 2019</time></p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    
+<p><em>Post script: This analysis was originally created in 2017, some 6 months before I actually got a job as a data scientist. This post is part of clearing a backlog of projects that I worked on before getting my first break as a Data Scientist. My approach is to publish as soon as it’s not embarrassing - but there’s still plenty of room for improvement</em></p>
+
+<h2 id="getting-strategic-in-the-statewide-nuisance-alligator-program-snap">Getting strategic in the Statewide Nuisance Alligator Program (SNAP)</h2>
+
+<h3 id="preamble">Preamble</h3>
+
+<p>Florida Fish and Wildlife Conservation Commission’s Statewide Alligator Harvest data between 2000 and 2016 is available at: http://myfwc.com/wildlifehabitats/managed/alligator/harvest/data-export</p>
+
+<p>I was first made aware of the dataset by Jeremy Singer-Vine, through his data is plural newsletter of curious and interesting datasets: https://tinyletter.com/data-is-plural</p>
+
+<p>Extra shoutout to LaTosha from FWC for your help in trying to link the data with some GISdata. I’d love to map some of this data out, but will leave that to the interested reader</p>
+
+<h4 id="introduction">Introduction</h4>
+
+<p>The analysis is set out in three parts:</p>
+
+<ul>
+  <li>Clean the data (including converting the Carcass Size measurements to metric - sorry ‘bout that US readers!)</li>
+  <li>Explore the time-related fields to identify ‘a good time to go hunting’</li>
+  <li>Explore the location-related fields to identify ‘a good place to go hunting’</li>
+</ul>
+
+<p><em>(Step 4. would be to fly out to Florida and test out my theories… #sponsorme!)</em></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="n">sns</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pylab</span> <span class="k">as</span> <span class="n">pylab</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="n">pylab</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s">'figure.figsize'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">20</span>
+<span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">raw_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">'FWCAlligatorHarvestData.csv'</span><span class="p">)</span>
+<span class="n">clean_data</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">raw_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">20</span><span class="p">]</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Year</th>
+      <th>Area Number</th>
+      <th>Area Name</th>
+      <th>Carcass Size</th>
+      <th>Harvest Date</th>
+      <th>Location</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>9 ft. 0 in.</td>
+      <td>10-02-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>8 ft. 10 in.</td>
+      <td>10-06-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>8 ft. 0 in.</td>
+      <td>09-25-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>8 ft. 0 in.</td>
+      <td>10-07-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>8 ft. 0 in.</td>
+      <td>09-22-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>7 ft. 2 in.</td>
+      <td>09-21-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>7 ft. 1 in.</td>
+      <td>09-21-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>6 ft. 11 in.</td>
+      <td>09-25-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>6 ft. 7 in.</td>
+      <td>09-25-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>6 ft. 6 in.</td>
+      <td>09-15-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>6 ft. 3 in.</td>
+      <td>10-07-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>2000</td>
+      <td>102</td>
+      <td>LAKE MARIAN</td>
+      <td>12 ft. 7 in.</td>
+      <td>09-04-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>2000</td>
+      <td>102</td>
+      <td>LAKE MARIAN</td>
+      <td>12 ft. 3 in.</td>
+      <td>09-10-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>2000</td>
+      <td>102</td>
+      <td>LAKE MARIAN</td>
+      <td>12 ft. 3 in.</td>
+      <td>09-03-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>2000</td>
+      <td>102</td>
+      <td>LAKE MARIAN</td>
+      <td>12 ft. 2 in.</td>
+      <td>09-25-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>2000</td>
+      <td>102</td>
+      <td>LAKE MARIAN</td>
+      <td>12 ft. 0 in.</td>
+      <td>09-27-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>2000</td>
+      <td>102</td>
+      <td>LAKE MARIAN</td>
+      <td>11 ft. 10 in.</td>
+      <td>09-09-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>2000</td>
+      <td>102</td>
+      <td>LAKE MARIAN</td>
+      <td>11 ft. 7 in.</td>
+      <td>09-10-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>2000</td>
+      <td>102</td>
+      <td>LAKE MARIAN</td>
+      <td>11 ft. 1 in.</td>
+      <td>10-07-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>20</th>
+      <td>2000</td>
+      <td>102</td>
+      <td>LAKE MARIAN</td>
+      <td>11 ft. 1 in.</td>
+      <td>10-07-2000</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">raw_data</span><span class="o">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(87182, 6)
+</code></pre></div></div>
+
+<h2 id="cleaning-and-preprocessing">Cleaning and preprocessing</h2>
+
+<p>Nothing revolutionary here:</p>
+<ul>
+  <li>Convert lengths from imperial strings to metric floats</li>
+  <li>look into null data and fill it where possible, or drop it</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">metric_size_converter</span><span class="p">(</span><span class="n">size</span><span class="p">):</span>
+    <span class="c">## size is a string, with the measurements separated by spaces</span>
+    <span class="c">## split this string to pull out the actual measurements</span>
+    
+    <span class="n">string_list</span> <span class="o">=</span> <span class="n">size</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    <span class="n">feet</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">string_list</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">inches</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">string_list</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+    <span class="c">## convert feet and inches into metres</span>
+    <span class="n">metres</span> <span class="o">=</span> <span class="p">(</span><span class="n">feet</span><span class="o">*</span><span class="mi">12</span> <span class="o">+</span> <span class="n">inches</span><span class="p">)</span><span class="o">*</span><span class="mf">2.54</span><span class="o">/</span><span class="mi">100</span>
+    
+    <span class="k">return</span> <span class="n">metres</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">metric_size_converter</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+
+
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Year</th>
+      <th>Area Number</th>
+      <th>Area Name</th>
+      <th>Carcass Size</th>
+      <th>Harvest Date</th>
+      <th>Location</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>3.4798</td>
+      <td>09-22-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>2.7432</td>
+      <td>10-02-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>2.6924</td>
+      <td>10-06-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>2.4384</td>
+      <td>09-25-2000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>2.4384</td>
+      <td>10-07-2000</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="s">'Harvest_Date'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Harvest Date'</span><span class="p">])</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+
+
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Year</th>
+      <th>Area Number</th>
+      <th>Area Name</th>
+      <th>Carcass Size</th>
+      <th>Harvest Date</th>
+      <th>Location</th>
+      <th>Harvest_Date</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>3.4798</td>
+      <td>09-22-2000</td>
+      <td>NaN</td>
+      <td>2000-09-22</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>2.7432</td>
+      <td>10-02-2000</td>
+      <td>NaN</td>
+      <td>2000-10-02</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>2.6924</td>
+      <td>10-06-2000</td>
+      <td>NaN</td>
+      <td>2000-10-06</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>2.4384</td>
+      <td>09-25-2000</td>
+      <td>NaN</td>
+      <td>2000-09-25</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2000</td>
+      <td>101</td>
+      <td>LAKE PIERCE</td>
+      <td>2.4384</td>
+      <td>10-07-2000</td>
+      <td>NaN</td>
+      <td>2000-10-07</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># check for any null dates</span>
+
+<span class="nb">len</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">isnull</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Harvest_Date'</span><span class="p">])])</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>264
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">isnull</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Harvest_Date'</span><span class="p">])]</span><span class="o">.</span><span class="n">shape</span>
+
+<span class="c">## looks like there's no date for some catches, but there is a year</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(264, 12)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Still useful to have the year, but create a filter to avoid any Nan issues</span>
+
+<span class="n">has_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">notnull</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Harvest_Date'</span><span class="p">])</span>
+<span class="n">has_date</span><span class="o">.</span><span class="n">shape</span>
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(87145,)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Let's check that the year has still been recorded correctly</span>
+
+<span class="n">clean_data</span><span class="p">[</span><span class="s">'Year'</span><span class="p">]</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="n">has_date</span><span class="p">][</span><span class="s">'Harvest_Date'</span><span class="p">]</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">year</span><span class="p">)</span>
+
+<span class="n">bad_date</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="n">has_date</span><span class="p">][</span><span class="n">clean_data</span><span class="p">[</span><span class="n">has_date</span><span class="p">][</span><span class="s">'Year'</span><span class="p">]</span> <span class="o">!=</span> <span class="n">clean_data</span><span class="p">[</span><span class="n">has_date</span><span class="p">][</span><span class="s">'Year'</span><span class="p">]]</span>
+
+<span class="nb">len</span><span class="p">(</span><span class="n">bad_date</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0
+</code></pre></div></div>
+
+<p><em>Always worth checking for internal consistency…</em></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span> <span class="o">=</span> <span class="n">clean_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">bad_date</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">has_date</span><span class="p">,</span><span class="s">'Year'</span><span class="p">]</span> <span class="o">=</span> <span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">has_date</span><span class="p">,</span><span class="s">'Year'</span><span class="p">]</span>
+<span class="n">clean_data</span><span class="o">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(87182, 7)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">has_date</span><span class="p">,</span><span class="s">'Month'</span><span class="p">]</span> <span class="o">=</span> <span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">has_date</span><span class="p">,</span><span class="s">'Harvest_Date'</span><span class="p">]</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">month</span><span class="p">)</span>
+<span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">has_date</span><span class="p">,</span><span class="s">'Day'</span><span class="p">]</span> <span class="o">=</span> <span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">has_date</span><span class="p">,</span><span class="s">'Harvest_Date'</span><span class="p">]</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">day</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">len</span><span class="p">(</span><span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">has_date</span><span class="p">,</span><span class="s">'Month'</span><span class="p">])</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>264
+</code></pre></div></div>
+
+<h1 id="when-should-i-go-hunting">When should I go hunting?</h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## How many distinct weeks do we have data for?</span>
+
+<span class="n">weeks</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s">'Year'</span><span class="p">:</span> <span class="n">clean_data</span><span class="o">.</span><span class="n">Year</span><span class="p">,</span><span class="s">'week'</span><span class="p">:</span><span class="n">clean_data</span><span class="o">.</span><span class="n">Harvest_Date</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span><span class="n">x</span><span class="o">.</span><span class="n">week</span><span class="p">)})</span>
+
+<span class="n">weeks</span> <span class="o">=</span> <span class="n">weeks</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span>
+
+<span class="nb">len</span><span class="p">(</span><span class="n">weeks</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>195
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">calendar</span> <span class="k">as</span> <span class="n">cal</span>
+
+<span class="n">days</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">cal</span><span class="o">.</span><span class="n">day_abbr</span><span class="p">)</span>
+
+<span class="n">clean_data</span><span class="p">[</span><span class="s">'DayofWeek'</span><span class="p">]</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Harvest_Date'</span><span class="p">]</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">dayofweek</span><span class="p">)</span>
+
+
+
+<span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">has_date</span><span class="p">,</span><span class="s">'Dayname'</span><span class="p">]</span> <span class="o">=</span> <span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">has_date</span><span class="p">,</span><span class="s">'DayofWeek'</span><span class="p">]</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">days</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)])</span>
+
+<span class="n">day_count</span> <span class="o">=</span> <span class="n">clean_data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">'Dayname'</span><span class="p">)[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">/</span><span class="p">(</span><span class="mi">204</span><span class="p">)</span>
+
+<span class="n">day_count</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">days</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s">'bar'</span><span class="p">)</span><span class="o">.</span><span class="nb">set</span><span class="p">(</span><span class="n">ylabel</span> <span class="o">=</span> <span class="s">'Number of Carcasses'</span><span class="p">,</span> <span class="n">title</span> <span class="o">=</span> <span class="s">'Average Carcasses per day 2000 - 2015'</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[Text(0, 0.5, 'Number of Carcasses'),
+ Text(0.5, 1.0, 'Average Carcasses per day 2000 - 2015')]
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_25_1.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Time series of number of catches over years</span>
+
+<span class="n">date_indexed_df</span> <span class="o">=</span> <span class="n">clean_data</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Harvest_Date'</span><span class="p">]))</span>
+
+<span class="n">df_by_year</span> <span class="o">=</span> <span class="n">date_indexed_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">TimeGrouper</span><span class="p">(</span><span class="n">freq</span><span class="o">=</span><span class="s">'A'</span><span class="p">))</span>
+
+<span class="n">yearplot</span> <span class="o">=</span> <span class="n">df_by_year</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s">'line'</span><span class="p">)</span>
+
+<span class="n">yearplot</span><span class="o">.</span><span class="nb">set</span><span class="p">(</span><span class="n">xlabel</span><span class="o">=</span><span class="s">'Year'</span><span class="p">,</span><span class="n">ylabel</span><span class="o">=</span><span class="s">'Total Carcasses'</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/home/tms/anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:5: FutureWarning: pd.TimeGrouper is deprecated and will be removed; Please use pd.Grouper(freq=...)
+  """
+
+
+
+
+
+[Text(0, 0.5, 'Total Carcasses'), Text(0.5, 0, 'Year')]
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_26_2.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fig</span><span class="p">,</span> <span class="n">axarray</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">12</span><span class="p">),</span> <span class="n">sharey</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+
+<span class="n">row</span> <span class="o">=</span> <span class="n">col</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">df_by_year</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">col</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="n">row</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="n">grp</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Grouper</span><span class="p">(</span><span class="n">freq</span><span class="o">=</span><span class="s">'D'</span><span class="p">))[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span> <span class="o">=</span> <span class="n">axarray</span><span class="p">[</span><span class="n">row</span><span class="p">,</span><span class="n">col</span><span class="p">],</span><span class="n">kind</span><span class="o">=</span><span class="s">'line'</span><span class="p">)</span>
+    <span class="n">col</span><span class="o">+=</span><span class="mi">1</span>
+    
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">(</span><span class="n">pad</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>    
+<span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s">'Daily Number of Carcasses by Year'</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_27_0.png" alt="png" /></p>
+
+<h3 id="observations">Observations</h3>
+
+<ul>
+  <li>There is a predictable weekday/weekend cycle</li>
+  <li>There is usually a peak in the harvest towards the end of the season, which in recent years has been the end of November <em>(although in 2014 and 2015 catches took place outside of the September-November window)</em></li>
+  <li>The total harvest has gone up dramatically year on year</li>
+</ul>
+
+<p>So, without a time machine to take us back to the quiet times around 2000-2005, the best time looks like a Monday towards the end of September.</p>
+
+<h1 id="where-should-i-go-hunting">Where should I go hunting?</h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Each entry is marked with one or both of an Area Name and a Location e.g.</span>
+
+<span class="n">clean_data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">87132</span><span class="p">]</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Year                           2015
+Area Number                     866
+Area Name             WALTON COUNTY
+Carcass Size                 2.6924
+Harvest Date             08-23-2015
+Location                 KINGS LAKE
+Harvest_Date    2015-08-23 00:00:00
+Month                             8
+Day                              23
+DayofWeek                         6
+Dayname                         Sun
+Name: 87132, dtype: object
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">print</span><span class="p">(</span><span class="s">'There are </span><span class="si">%</span><span class="s">i distinct areas, and </span><span class="si">%</span><span class="s">i distinct locations'</span> <span class="o">%</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Area Name'</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()),</span><span class="nb">len</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Location'</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())))</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>There are 166 distinct areas, and 3577 distinct locations
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## How many entries don't have an Area Name? 101</span>
+
+<span class="n">Area_Unknown</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Area Name'</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">Area_Unknown</span><span class="o">.</span><span class="nb">sum</span><span class="p">())</span>
+
+<span class="c">## How many entries don't have a location? 71096</span>
+
+<span class="n">Location_Unknown</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Location'</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">Location_Unknown</span><span class="o">.</span><span class="nb">sum</span><span class="p">())</span>
+
+<span class="c">## How many don't have an area or a location? 99</span>
+
+<span class="n">Location_Unknown</span><span class="p">[</span><span class="n">Area_Unknown</span><span class="p">]</span><span class="o">.</span><span class="nb">sum</span><span class="p">()</span>
+
+<span class="c">## Can we infer the area from the location (when there's a location but no area?)</span>
+
+<span class="n">clean_data</span><span class="p">[</span><span class="n">Area_Unknown</span><span class="p">][</span><span class="o">~</span><span class="n">Location_Unknown</span><span class="p">]</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>101
+71145
+
+
+/home/tms/anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:19: UserWarning: Boolean Series key will be reindexed to match DataFrame index.
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Year</th>
+      <th>Area Number</th>
+      <th>Area Name</th>
+      <th>Carcass Size</th>
+      <th>Harvest Date</th>
+      <th>Location</th>
+      <th>Harvest_Date</th>
+      <th>Month</th>
+      <th>Day</th>
+      <th>DayofWeek</th>
+      <th>Dayname</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>17244</th>
+      <td>2006.0</td>
+      <td>406</td>
+      <td>NaN</td>
+      <td>2.8448</td>
+      <td>10-28-2006</td>
+      <td>STA-5 (406)</td>
+      <td>2006-10-28</td>
+      <td>10.0</td>
+      <td>28.0</td>
+      <td>5.0</td>
+      <td>Sat</td>
+    </tr>
+    <tr>
+      <th>17272</th>
+      <td>2006.0</td>
+      <td>406</td>
+      <td>NaN</td>
+      <td>2.4130</td>
+      <td>09-08-2006</td>
+      <td>STA 5 (406)</td>
+      <td>2006-09-08</td>
+      <td>9.0</td>
+      <td>8.0</td>
+      <td>4.0</td>
+      <td>Fri</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Looks like they're all from Area 406, which is sometimes called STA-5, </span>
+<span class="c">## so let's just impute that and then drop any other unknown locations</span>
+
+<span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Area Number'</span><span class="p">]</span> <span class="o">==</span> <span class="mi">406</span><span class="p">,</span><span class="s">'Area Name'</span><span class="p">]</span> <span class="o">=</span> <span class="s">'STA-5'</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Area_Unknown</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Area Name'</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span>
+
+<span class="n">clean_data</span> <span class="o">=</span> <span class="n">clean_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="n">Area_Unknown</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<h4 id="sub-areas">Sub-Areas</h4>
+
+<p>Some of our areas have a parentheses-enclosed sub-area, which may be useful to teases out the best place. If we just say <em>‘Take me to St. John’s River’</em>, it’s better if we’re referring to somewhere specific along that 300 mile stretch…!</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Here are the specific sub areas</span>
+
+<span class="k">def</span> <span class="nf">sub_area_search</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">"</span><span class="err">\</span><span class="s">((.*?)</span><span class="err">\</span><span class="s">)"</span><span class="p">,</span><span class="n">string</span><span class="p">,</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+
+<span class="n">sub_area_col</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Area Name'</span><span class="p">]</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">sub_area_search</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">sub_area_search</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">else</span> <span class="bp">None</span><span class="p">)</span>
+
+<span class="n">sub_area_filt</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Area Name'</span><span class="p">]</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="bp">True</span> <span class="k">if</span> <span class="n">sub_area_search</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span><span class="p">)</span>
+
+<span class="n">sub_area_col</span><span class="p">[</span><span class="n">sub_area_filt</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>array(['POOL A', 'POOL C', 'WEST', 'SOUTH', 'NORTH', 'EAST',
+       "LAKE HELL N' BLAZES", 'LAKE POINSETT', 'PUZZLE LAKE', 'WELAKA',
+       'PALATKA SOUTH', 'WCAs 2A &amp; 2B', 'WCAs 3A &amp; 3B', 'BROADMOOR UNIT',
+       'GOODWIN UNIT', 'WCA 2', 'WCA 3', 'PALATKA', 'POOL E'],
+      dtype=object)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="n">sub_area_filt</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">'Area Name'</span><span class="p">)</span><span class="o">.</span><span class="n">Location</span><span class="o">.</span><span class="n">agg</span><span class="p">({</span><span class="s">'Distinct Locations'</span> <span class="p">:</span>  <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="o">.</span><span class="n">nunique</span><span class="p">,</span>
+                    <span class="s">'Total Harvest'</span> <span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="o">.</span><span class="n">count</span><span class="p">})</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/home/tms/anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:2: FutureWarning: using a dict on a Series for aggregation
+is deprecated and will be removed in a future version
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Distinct Locations</th>
+      <th>Total Harvest</th>
+    </tr>
+    <tr>
+      <th>Area Name</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>EVERGLADES &amp; FRANCIS S. TAYLOR WMA (WCA 2)</th>
+      <td>1</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>EVERGLADES &amp; FRANCIS S. TAYLOR WMA (WCA 3)</th>
+      <td>7</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <th>EVERGLADES &amp; FRANCIS S. TAYLOR WMA (WCAs 2A &amp; 2B)</th>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>EVERGLADES &amp; FRANCIS S. TAYLOR WMA (WCAs 3A &amp; 3B)</th>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>EVERGLADES WMA (WCA 2)</th>
+      <td>9</td>
+      <td>13</td>
+    </tr>
+    <tr>
+      <th>EVERGLADES WMA (WCA 3)</th>
+      <td>26</td>
+      <td>42</td>
+    </tr>
+    <tr>
+      <th>KISSIMMEE RIVER (POOL A)</th>
+      <td>13</td>
+      <td>26</td>
+    </tr>
+    <tr>
+      <th>KISSIMMEE RIVER (POOL C)</th>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>KISSIMMEE RIVER (POOL E)</th>
+      <td>8</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>LAKE OKEECHOBEE (EAST)</th>
+      <td>24</td>
+      <td>48</td>
+    </tr>
+    <tr>
+      <th>LAKE OKEECHOBEE (NORTH)</th>
+      <td>40</td>
+      <td>80</td>
+    </tr>
+    <tr>
+      <th>LAKE OKEECHOBEE (SOUTH)</th>
+      <td>80</td>
+      <td>231</td>
+    </tr>
+    <tr>
+      <th>LAKE OKEECHOBEE (WEST)</th>
+      <td>84</td>
+      <td>174</td>
+    </tr>
+    <tr>
+      <th>ST. JOHNS RIVER (LAKE HELL N' BLAZES)</th>
+      <td>44</td>
+      <td>92</td>
+    </tr>
+    <tr>
+      <th>ST. JOHNS RIVER (LAKE POINSETT)</th>
+      <td>67</td>
+      <td>314</td>
+    </tr>
+    <tr>
+      <th>ST. JOHNS RIVER (PALATKA SOUTH)</th>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>ST. JOHNS RIVER (PALATKA)</th>
+      <td>4</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>ST. JOHNS RIVER (PUZZLE LAKE)</th>
+      <td>24</td>
+      <td>102</td>
+    </tr>
+    <tr>
+      <th>ST. JOHNS RIVER (WELAKA)</th>
+      <td>20</td>
+      <td>43</td>
+    </tr>
+    <tr>
+      <th>T.M. GOODWIN WMA (BROADMOOR UNIT)</th>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>T.M. GOODWIN WMA (GOODWIN UNIT)</th>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>Let's take a look at the range of locations for a couple of these - should we just replace the area with the (sub area)?</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="n">sub_area_filt</span><span class="p">][</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Area Name'</span><span class="p">]</span> <span class="o">==</span> <span class="s">'ST. JOHNS RIVER (WELAKA)'</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">'Location'</span><span class="p">)</span><span class="o">.</span><span class="n">Year</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/home/tms/anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:1: UserWarning: Boolean Series key will be reindexed to match DataFrame index.
+  """Entry point for launching an IPython kernel.
+
+
+
+
+
+Location
+ACCROSS FROM WEL                  1
+FL                                2
+LITTLE LAKE GEORGE                2
+NE SIDE OF LITTLE LAKE GEORGE     2
+PRIVATE PROPERTY                  4
+SEVEN SISTERS IS                  1
+SPORTSMANS HARBOR AREA            1
+ST JOHNS                          1
+ST JOHNS RIVER                    2
+ST JOHNS RIVER SHELL HABOR        1
+ST JOHNS RIVER-WALAKA             1
+ST JOHNS WELKA                    2
+ST. JOHNS RIVER                   1
+St. Johns River                   1
+TURKEY ISLAND COVE                1
+WALAKA                            1
+WELAKA                           14
+WELATKA 506                       2
+WELEKA                            1
+WELKA                             2
+Name: Year, dtype: int64
+</code></pre></div></div>
+
+<p>So we'll just call it WELAKA as location - too much detail since they'll all have the same area code. Ultimately go back to the area code.</p>
+<p>Also, looks like in most cases the location is unknown anyway</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Area Name'</span><span class="p">]</span> <span class="o">==</span> <span class="s">'ST. JOHNS RIVER (LAKE POINSETT)'</span> <span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">'Location'</span><span class="p">)</span><span class="o">.</span><span class="n">Year</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Location
+502                                 6
+502 WASHINGTON                      1
+BREVARD                             1
+BREVARD COUNTY                      1
+Brevard                             1
+FL                                  1
+LAKE  POINCETT                      1
+LAKE  POINTSETTE                    1
+LAKE PAINSETTE                      1
+LAKE POINSET                        6
+LAKE POINSETE                       1
+LAKE POINSETT                      56
+LAKE POINSETT NORTH                 1
+LAKE POINSETTE                     15
+LAKE POINTSETT                      6
+LAKE PUINSATTA                      3
+LAKE WASH./ POINSETT                1
+LAKE WASHING 502                    1
+LAKE WASHINGTON                    72
+LAKE WASHINGTON 502                 1
+LAKE WASHINGTON DAM                 1
+LAKE WASHINGTON/POINSETT            1
+LAKE WINDER                        18
+LAKE WINER                          1
+LAKEPOINSETT                        1
+LK. WASHINGTON                      1
+Lake Harris                         1
+Lake Poinsett                       6
+Lake Poinsette                      3
+Lake poinsett                       1
+                                   ..
+POINSETTA                           2
+POINSETTE                           4
+POINTSET                            2
+POINTSETT                           4
+PONSETT                             1
+SAINT JOHNS RIVER                   1
+SOUTH END OF LAKE WASHINGTON        2
+ST JOHNS                            2
+ST JOHNS IN BREVARD (               1
+ST JOHNS NORTH RIVER                1
+ST JOHNS RIVER                     13
+ST JOHNS RIVER LAKE POINSETT        1
+ST JOHNS RIVER LAKE POINSETTE       3
+ST JOHNS RIVER LAKE WINDER          2
+ST. JOHN IN BREVARD                 1
+ST. JOHNS RIVER                     7
+ST. JOHNS RIVER (LAKE POINSETT)     1
+ST.JOHNS                            2
+UPPER ST. JOHN                      1
+UPPER ST. JOHNS                     2
+WASHINGTN                           1
+WASHINGTON                          5
+WASHINGTON 502                      4
+WASHINGTTON                         1
+WASHINTON                           1
+WINDER                              2
+WINDSER                             1
+lake Poinsette                      1
+lake poinset                        2
+lake poinsett                       1
+Name: Year, Length: 67, dtype: int64
+</code></pre></div></div>
+
+<p>Again, loads of locations, but the main two are Lake Poinsett and Lake Washington.</p>
+<p>What's strange is that these lakes aren't particularly near each other, so maybe the location is not actually that helpful.</p>
+<p>What we'll do is use the location to help indicate if the carcass was from a lake, river etc., but when looking for specific places, we'll only use the area</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c">## simple regex function to generate new area columns</span>
+
+<span class="k">def</span> <span class="nf">area_classifier</span><span class="p">(</span><span class="n">area_name</span><span class="p">,</span> <span class="n">specified_area_type</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">specified_area_type</span><span class="p">,</span><span class="n">area_name</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">filtarea_names</span> <span class="o">=</span> <span class="p">[</span><span class="s">'River'</span><span class="p">,</span><span class="s">'Lake'</span><span class="p">,</span><span class="s">'County'</span><span class="p">,</span><span class="s">'WMA'</span><span class="p">,</span><span class="s">'Marsh'</span><span class="p">,</span><span class="s">'Pond'</span><span class="p">,</span> <span class="s">'Unknown'</span><span class="p">,</span><span class="s">'Reservoir'</span><span class="p">,</span><span class="s">'^STA'</span><span class="p">]</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">filt_area_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">filtarea_names</span><span class="p">:</span>
+    <span class="n">filt_area_dict</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">=</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Area Name'</span><span class="p">]</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">area_classifier</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span> 
+
+
+<span class="c">## Make these boolean filters rather than columns on the dataframe</span>
+<span class="c">## Start with locations where available then go on to areas</span>
+<span class="c">## Little River Lake is a Lake, not a river.</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'WMA'</span><span class="p">]][</span><span class="s">'Area Name'</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>array(['EVERGLADES WMA - 2', 'EVERGLADES WMA - 3', 'HOLEY LAND WMA',
+       'GUANA RIVER WMA', 'OCALA WMA', 'THREE LAKES WMA',
+       'EVERGLADES &amp; FRANCIS S. TAYLOR WMA (WCAs 2A &amp; 2B)',
+       'EVERGLADES &amp; FRANCIS S. TAYLOR WMA (WCAs 3A &amp; 3B)',
+       'T.M. GOODWIN WMA (BROADMOOR UNIT)',
+       'T.M. GOODWIN WMA (GOODWIN UNIT)', 'EVERGLADES WMA (WCA 2)',
+       'EVERGLADES WMA (WCA 3)', 'T.M. GOODWIN WMA GOODWIN UNIT)',
+       'EVERGLADES &amp; FRANCIS S. TAYLOR WMA (WCA 2)',
+       'EVERGLADES &amp; FRANCIS S. TAYLOR WMA (WCA 3)'], dtype=object)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">filt_location_dict</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">filtlocation_names</span> <span class="o">=</span> <span class="p">[</span><span class="s">'River'</span><span class="p">,</span><span class="s">'Lake'</span><span class="p">,</span><span class="s">'County'</span><span class="p">,</span><span class="s">'WMA'</span><span class="p">,</span><span class="s">'Marsh'</span><span class="p">,</span><span class="s">'Pond'</span><span class="p">,</span> <span class="s">'Unknown'</span><span class="p">,</span><span class="s">'Swamp'</span><span class="p">,</span><span class="s">'Creek'</span><span class="p">,</span><span class="s">'Canal'</span><span class="p">,</span><span class="s">'Springs'</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">filtlocation_names</span><span class="p">:</span>
+    
+    <span class="n">filt_location_dict</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Location'</span><span class="p">]</span><span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">area_classifier</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="n">filt_location_dict</span><span class="p">[</span><span class="s">'Swamp'</span><span class="p">]][</span><span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'Lake'</span><span class="p">]]</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/home/tms/anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:1: UserWarning: Boolean Series key will be reindexed to match DataFrame index.
+  """Entry point for launching an IPython kernel.
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Year</th>
+      <th>Area Number</th>
+      <th>Area Name</th>
+      <th>Carcass Size</th>
+      <th>Harvest Date</th>
+      <th>Location</th>
+      <th>Harvest_Date</th>
+      <th>Month</th>
+      <th>Day</th>
+      <th>DayofWeek</th>
+      <th>Dayname</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>78559</th>
+      <td>2014.0</td>
+      <td>835</td>
+      <td>LAKE COUNTY</td>
+      <td>3.5560</td>
+      <td>09-27-2014</td>
+      <td>OKAHUMPKA SWAMP</td>
+      <td>2014-09-27</td>
+      <td>9.0</td>
+      <td>27.0</td>
+      <td>5.0</td>
+      <td>Sat</td>
+    </tr>
+    <tr>
+      <th>78675</th>
+      <td>2014.0</td>
+      <td>835</td>
+      <td>LAKE COUNTY</td>
+      <td>2.6924</td>
+      <td>09-27-2014</td>
+      <td>OKAHUMPKA SWAMP</td>
+      <td>2014-09-27</td>
+      <td>9.0</td>
+      <td>27.0</td>
+      <td>5.0</td>
+      <td>Sat</td>
+    </tr>
+    <tr>
+      <th>85658</th>
+      <td>2015.0</td>
+      <td>835</td>
+      <td>LAKE COUNTY</td>
+      <td>2.1336</td>
+      <td>10-17-2015</td>
+      <td>GREEN SWAMP</td>
+      <td>2015-10-17</td>
+      <td>10.0</td>
+      <td>17.0</td>
+      <td>5.0</td>
+      <td>Sat</td>
+    </tr>
+    <tr>
+      <th>85703</th>
+      <td>2015.0</td>
+      <td>835</td>
+      <td>LAKE COUNTY</td>
+      <td>1.7018</td>
+      <td>10-11-2015</td>
+      <td>GREEN SWAMP</td>
+      <td>2015-10-11</td>
+      <td>10.0</td>
+      <td>11.0</td>
+      <td>6.0</td>
+      <td>Sun</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="n">i</span><span class="p">:</span><span class="n">filt_location_dict</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="nb">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">filt_location_dict</span><span class="p">}</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{'River': 4282,
+ 'Lake': 6234,
+ 'County': 132,
+ 'WMA': 34,
+ 'Marsh': 46,
+ 'Pond': 304,
+ 'Unknown': 1,
+ 'Swamp': 149,
+ 'Creek': 1544,
+ 'Canal': 573,
+ 'Springs': 44}
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Find anything which has a double count in location (e.g. Newmans lake will look like a 'wma' and a 'lake') </span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">combinations</span> <span class="k">as</span> <span class="n">cmb</span>
+
+<span class="n">overlap_locations</span> <span class="o">=</span> <span class="p">{</span><span class="n">c</span><span class="p">:(</span><span class="n">filt_location_dict</span><span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">&amp;</span> <span class="n">filt_location_dict</span><span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span> 
+                     <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cmb</span><span class="p">(</span><span class="n">filt_location_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span><span class="mi">2</span><span class="p">)}</span>
+
+<span class="n">overlap_locations_counts</span> <span class="o">=</span> <span class="p">{</span><span class="n">l</span><span class="p">:</span><span class="n">overlap_locations</span><span class="p">[</span><span class="n">l</span><span class="p">]</span><span class="o">.</span><span class="nb">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">overlap_locations</span> <span class="k">if</span> <span class="n">overlap_locations</span><span class="p">[</span><span class="n">l</span><span class="p">]</span><span class="o">.</span><span class="nb">sum</span><span class="p">()</span><span class="o">!=</span><span class="mi">0</span><span class="p">}</span>
+
+<span class="n">overlap_locations_counts</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{('River', 'Lake'): 19,
+ ('River', 'County'): 9,
+ ('River', 'Swamp'): 36,
+ ('River', 'Creek'): 9,
+ ('River', 'Canal'): 3,
+ ('River', 'Springs'): 3,
+ ('Lake', 'County'): 12,
+ ('Lake', 'WMA'): 20,
+ ('Lake', 'Marsh'): 12,
+ ('Lake', 'Pond'): 7,
+ ('Lake', 'Swamp'): 5,
+ ('Lake', 'Creek'): 19,
+ ('Lake', 'Canal'): 45,
+ ('Lake', 'Springs'): 2,
+ ('County', 'Pond'): 6,
+ ('County', 'Creek'): 2,
+ ('County', 'Canal'): 16,
+ ('County', 'Springs'): 2,
+ ('Pond', 'Swamp'): 1,
+ ('Pond', 'Creek'): 12,
+ ('Pond', 'Canal'): 19,
+ ('Swamp', 'Creek'): 40,
+ ('Creek', 'Canal'): 6,
+ ('Creek', 'Springs'): 16}
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">overlap_locationsdata</span> <span class="o">=</span> <span class="p">{</span><span class="n">l</span><span class="p">:</span><span class="n">clean_data</span><span class="o">.</span><span class="n">Location</span><span class="p">[</span><span class="n">overlap_locations</span><span class="p">[</span><span class="n">l</span><span class="p">]]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">overlap_locations</span> <span class="k">if</span> <span class="n">overlap_locations</span><span class="p">[</span><span class="n">l</span><span class="p">]</span><span class="o">.</span><span class="nb">sum</span><span class="p">()</span><span class="o">!=</span><span class="mi">0</span><span class="p">}</span>
+
+<span class="n">overlap_locationsdata</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{('River',
+  'Lake'): array(['ST JOHNS RIVER LAKE POINSETT', 'ST JOHNS RIVER LAKE WINDER',
+        'ST. JOHNS RIVER (LAKE POINSETT)', 'LAKE HARNEY ST JOHNS RIVER',
+        'LAKE HARNEY (ST. JOHNS RIVER)', 'ST HONS RIVER LAKE HARNEY',
+        'KISS RIVER NORTH LAKE', 'SMOKEHOUSE LAKE/CHOCTACHATEE RIVER',
+        'ST JOHNS RIVER/LAKE HELL N BLAZES',
+        'ST JOHNS RIVER LAKE POINSETTE', 'ST JOHNS RIVER/LAKE HARNEY',
+        'MANATEE RIVER/LAKE MANATEE EAST OF VERNA BETHANY R',
+        'choctawhatchee river-- inside lake', 'LITTLE RIVER LAKE'],
+       dtype=object),
+ ('River',
+  'County'): array(['CLAY COUNTY, ST. JOHNS RIVER', 'NORTH INDIAN RIVER COUNTY',
+        'NASSAU COUNTY, ST MARYS RIVER', 'OKALOOSA COUNTY, YELLOW RIVER',
+        'River/creek off of county rd 67',
+        'Escambia River (santa rosa county side)',
+        'escambia River (santa rosa county side)'], dtype=object),
+ ('River', 'Swamp'): array(['SIMPSON RIVER, ESCAMBIA RIVER SWAMP',
+        'WHITE RIVER, ESCAMBIA RIVER SWAMP', 'WITHLACOOCHEE RIVER SWAMP',
+        'RIVER SWAMP'], dtype=object),
+ ('River', 'Creek'): array(['St. Johns River Deep Creek',
+        'JUST OFF APALACH. RIVER IN GRASSY CREEK',
+        'SMOKEHOUSE CREEK-BROTHERS RIVER', 'ST. JOHNS RIVER, DEEP CREEK',
+        'ST. JOHNS RIVER, TROUT CREEK', 'River/creek off of county rd 67',
+        'St. Johns River north of deep creek',
+        'Tocoi Creek off of St. Johns River'], dtype=object),
+ ('River',
+  'Canal'): array(['KISSIMMEE RIVER CANAL', 'ST JOHNS RIVER UPPER BASIN CANALS'],
+       dtype=object),
+ ('River',
+  'Springs'): array(['Santa Fe River. High springs', 'LITTLE RIVER SPRINGS'],
+       dtype=object),
+ ('Lake', 'County'): array(['Lake County', 'lake county blue springs',
+        'lake county blue springs area', 'Polk County Lake', 'LAKE COUNTY',
+        'PRIVATE POND IN SOUTH LAKE COUNTY', 'PIVATE LAKE IN LEE COUNTY',
+        'Lake county/ lake denham', 'Lake county / private land',
+        'polk county private lake no name'], dtype=object),
+ ('Lake', 'WMA'): array(['NEWMANS LAKE'], dtype=object),
+ ('Lake',
+  'Marsh'): array(['Lettuce Lake (Murphy Marsh)', 'LETTUCE LAKE (MURPHY MARSH)',
+        'LETTUCE LAKE / MURPHY MARSH', 'MURPHY MARSH (LETTUCE LAKE)',
+        'MURPHY MARSH/LETTUCE LAKE', 'LETTUCE LAKE(MURPHYMARSH)',
+        'LAKE MATTIE MARSH'], dtype=object),
+ ('Lake',
+  'Pond'): array(['LEISURE LAKE POND', 'PRIVATE PROPERTY (POND) SR 70 LAKE PLACID',
+        'PRIVATE POND IN SOUTH LAKE COUNTY', 'Private Pond Lakeland',
+        'Private Pond LakeLand', 'POND ON MOORE RD LAKELAND',
+        'BRACEY RD N LAKELAND POND'], dtype=object),
+ ('Lake', 'Swamp'): array(['GAP LAKE SWAMP', 'SWAMP, LAKE'], dtype=object),
+ ('Lake',
+  'Creek'): array(['ECONFINA CREEK, DEERPOINT LAKE', 'LAKE MARION CREEK',
+        'BLAKESLEE CREEK', 'LAKE BUTLER CREEK', 'LAKE ASHBY CREEK'],
+       dtype=object),
+ ('Lake', 'Canal'): array(['LAKE JUNE CANAL', 'INDAIN LAKE ESTATES CANAL',
+        'RIM CANAL LAKE OKEECHOBEE', 'LAKE OKEECHOBEE RIM CANAL',
+        'GASPRILLIA ROAD CANAL @HOLIDAY LAKES', 'LAKE GENTRY CANAL',
+        'CANAL OFF LAKE CYPRESS', 'WEST LAKE CANAL',
+        'WEST LAKE TOHO PRIVATE CANAL',
+        'PRIVATE CANAL OFF OF WEST LAKE TOHO',
+        'Canal adjacent to Lake Okeechobee', 'CANAL LAKE',
+        'johns lake canal', 'Canal going from w lake toho to cypress lake',
+        'canal that goes from w lake toho to cypress lake',
+        'Lake cypress canals', 'Lake gentry canal', 'GANT LAKE CANAL',
+        'LAKE ASHBY CANAL', 'LAKE TARPON CANAL'], dtype=object),
+ ('Lake',
+  'Springs'): array(['lake county blue springs', 'lake county blue springs area'],
+       dtype=object),
+ ('County', 'Pond'): array(['NE CORNER HOLMES COUNTY, BAXLEY POND',
+        'PRIVATE POND IN SOUTH LAKE COUNTY',
+        'private pond eastern Lafayette County',
+        'Washington County / Private Property Pond HWY 77',
+        'Back Waters of Gap Pond hwy 77 Washington County'], dtype=object),
+ ('County', 'Creek'): array(['River/creek off of county rd 67',
+        'creek of of county rd 67 in franklin county'], dtype=object),
+ ('County',
+  'Canal'): array(['Canals off of interceptor lagoon Charlotte county',
+        'GULF COUNTY CANAL', 'COUNTY LINE CANAL'], dtype=object),
+ ('County',
+  'Springs'): array(['lake county blue springs', 'lake county blue springs area'],
+       dtype=object),
+ ('Pond', 'Swamp'): array(['Swamp Pond'], dtype=object),
+ ('Pond', 'Creek'): array(['SWIFT CREEK POND'], dtype=object),
+ ('Pond',
+  'Canal'): array(['Harney Pond Canal', 'Harne Pond Canal', 'Hawney Pond Canal',
+        'HARNEY POND CANAL', 'Near harney pond canal'], dtype=object),
+ ('Swamp',
+  'Creek'): array(['REEDY CREEK SWAMP', 'RICE CREEK SWAMP'], dtype=object),
+ ('Creek', 'Canal'): array(['FIRST EATEN CREEK CANAL', 'TAYLOR CREEK CANAL',
+        'CANOE CREEK CANAL'], dtype=object),
+ ('Creek', 'Springs'): array(['ALEXANDER SPRINGS CREEK'], dtype=object)}
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Find anything which has a double count in Area (e.g. Newmans lake)</span>
+
+<span class="n">overlap_area</span> <span class="o">=</span> <span class="p">{</span><span class="n">c</span><span class="p">:(</span><span class="n">filt_area_dict</span><span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">&amp;</span> <span class="n">filt_area_dict</span><span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span> 
+                     <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cmb</span><span class="p">(</span><span class="n">filt_area_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span><span class="mi">2</span><span class="p">)}</span>
+
+<span class="n">overlap_area_counts</span> <span class="o">=</span> <span class="p">{</span><span class="n">l</span><span class="p">:</span><span class="n">overlap_area</span><span class="p">[</span><span class="n">l</span><span class="p">]</span><span class="o">.</span><span class="nb">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">overlap_area</span> <span class="k">if</span> <span class="n">overlap_area</span><span class="p">[</span><span class="n">l</span><span class="p">]</span><span class="o">.</span><span class="nb">sum</span><span class="p">()</span><span class="o">!=</span><span class="mi">0</span><span class="p">}</span>
+
+<span class="n">overlap_area_counts</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{('River', 'Lake'): 9763,
+ ('River', 'County'): 39,
+ ('River', 'WMA'): 153,
+ ('Lake', 'County'): 2466,
+ ('Lake', 'WMA'): 176}
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">overlap_areadata</span> <span class="o">=</span> <span class="p">{</span><span class="n">l</span><span class="p">:</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Area Name'</span><span class="p">][</span><span class="n">overlap_area</span><span class="p">[</span><span class="n">l</span><span class="p">]]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">overlap_area</span> <span class="k">if</span> <span class="n">overlap_area</span><span class="p">[</span><span class="n">l</span><span class="p">]</span><span class="o">.</span><span class="nb">sum</span><span class="p">()</span><span class="o">!=</span><span class="mi">0</span><span class="p">}</span>
+
+<span class="n">overlap_areadata</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{('River', 'Lake'): array(["ST. JOHNS RIVER (LAKE HELL N' BLAZES)",
+        'ST. JOHNS RIVER (LAKE POINSETT)', 'ST. JOHNS RIVER (PUZZLE LAKE)'],
+       dtype=object),
+ ('River', 'County'): array(['INDIAN RIVER COUNTY'], dtype=object),
+ ('River', 'WMA'): array(['GUANA RIVER WMA'], dtype=object),
+ ('Lake', 'County'): array(['LAKE COUNTY'], dtype=object),
+ ('Lake', 'WMA'): array(['THREE LAKES WMA'], dtype=object)}
+</code></pre></div></div>
+
+<p>This counting thing is never going to be 100% correct, unless we went through and relabelled these by hand. We’re not going to do that, so we’ll make clear a few <em>sensible</em> rules that we’re following to do the counting:</p>
+
+<h4 id="1-prioritise-the-location-before-the-area">1. Prioritise the Location before the Area</h4>
+
+<h4 id="2-dealing-with-double-labelled-locations">2. Dealing with Double labelled <strong>Locations</strong></h4>
+
+<ul>
+  <li>If it’s a county, use the other label&lt;/li&gt;</li>
+  <li>If it’s a lake and a river, call it a lake&lt;/li&gt;</li>
+  <li>If it’s a lake and a WMA, it’s a lake&lt;/li&gt;</li>
+  <li>If it’s labelled as a creek, pond, canal, swamp or marsh and something else, ignore the other thing.</li>
+</ul>
+
+<h4 id="3-dealing-with-double-labelled-areas">3. Dealing with double labelled <strong>Areas</strong></h4>
+<ul>
+  <li>If it’s a county, use the other label</li>
+  <li>If it’s a lake and a river, it’s a lake</li>
+  <li>If it’s a WMA and something else, ignore the other thing</li>
+</ul>
+
+<h4 id="4-where-there-are-different-labels-across-the-area-and-location-take-the-location">4. Where there are different labels across the Area and Location, take the <em>Location</em></h4>
+
+<h4 id="5-if-you-still-cant-classify-it-its-just-somewhere-in-the-county-hollows-pools-ditches-or-2-miles-down-from-eureka-them-gators-get-everywhere">5. If you still can’t classify it, it’s just somewhere in the county. Hollows, pools, ditches or 2 miles down from Eureka, them gators get everywhere!</h4>
+
+<h3 id="This-counting-thing-is-never-going-to-be-100%-correct,-unless-we-went-through-and-relabelled-these-by-hand.">This counting thing is never going to be 100% correct, unless we went through and relabelled these by hand.<a class="anchor-link" href="#This-counting-thing-is-never-going-to-be-100%-correct,-unless-we-went-through-and-relabelled-these-by-hand.">¶</a></h3>
+<p>We're not going to do that, so we'll make clear a few <em>sensible</em> rules that we're following to do the counting:</p>
+<h4 id="1.-Prioritise-the-Location-before-the-Area">1. Prioritise the Location before the Area<a class="anchor-link" href="#1.-Prioritise-the-Location-before-the-Area">¶</a></h4>
+<h4 id="2.-Dealing-with-Double-labelled-Locations">2. Dealing with Double labelled <em>Locations</em><a class="anchor-link" href="#2.-Dealing-with-Double-labelled-Locations">¶</a></h4>
+<ul>
+<li>If it's a county, use the other label</li>
+<li>If it's a lake and a river, call it a lake</li>
+<li>If it's a lake and a WMA, it's a lake</li>
+<li>If it's labelled as a creek, pond, canal, swamp or marsh and something else, ignore the other thing. </li>
+</ul>
+<h4 id="3.-Dealing-with-double-labelled-Areas">3. Dealing with double labelled <em>Areas</em><a class="anchor-link" href="#3.-Dealing-with-double-labelled-Areas">¶</a></h4>
+<ul>
+<li>If it's a county, use the other label</li>
+<li>If it's a lake and a river, it's a lake</li>
+<li>If it's a WMA and something else, ignore the other thing</li>
+</ul>
+<h4 id="4.-Where-there-are-different-labels-across-the-Area-and-Location,-take-the-Location">4. Where there are different labels across the Area and Location, take the Location<a class="anchor-link" href="#4.-Where-there-are-different-labels-across-the-Area-and-Location,-take-the-Location">¶</a></h4>
+<h4 id="5.-If-you-still-can't-classify-it,-it's-just-somewhere-in-the-county.-Hollows,-pools,-ditches-or-2-miles-down-from-Eureka,-them-gators-get-everywhere!">5. If you still can't classify it, it's just somewhere in the county. Hollows, pools, ditches or 2 miles down from Eureka, them gators get everywhere!<a class="anchor-link" href="#5.-If-you-still-can't-classify-it,-it's-just-somewhere-in-the-county.-Hollows,-pools,-ditches-or-2-miles-down-from-Eureka,-them-gators-get-everywhere!">¶</a></h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">conditions</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">filt_location_dict</span><span class="p">[</span><span class="s">'Creek'</span><span class="p">],</span>
+    <span class="n">filt_location_dict</span><span class="p">[</span><span class="s">'Canal'</span><span class="p">],</span>
+    <span class="n">filt_location_dict</span><span class="p">[</span><span class="s">'Springs'</span><span class="p">],</span>
+    <span class="n">filt_location_dict</span><span class="p">[</span><span class="s">'Pond'</span><span class="p">],</span>
+    <span class="n">filt_location_dict</span><span class="p">[</span><span class="s">'Swamp'</span><span class="p">],</span>
+    <span class="n">filt_location_dict</span><span class="p">[</span><span class="s">'Marsh'</span><span class="p">],</span>
+    <span class="n">filt_location_dict</span><span class="p">[</span><span class="s">'Lake'</span><span class="p">],</span>
+    <span class="n">filt_location_dict</span><span class="p">[</span><span class="s">'River'</span><span class="p">],</span>
+    <span class="n">filt_location_dict</span><span class="p">[</span><span class="s">'WMA'</span><span class="p">],</span>
+    <span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'WMA'</span><span class="p">],</span>
+    <span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'^STA'</span><span class="p">],</span>
+    <span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'Marsh'</span><span class="p">],</span>
+    <span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'Reservoir'</span><span class="p">],</span>
+    <span class="p">(</span><span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'Lake'</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'County'</span><span class="p">]),</span>
+    <span class="p">(</span><span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'River'</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'County'</span><span class="p">]),</span>
+    <span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'Lake'</span><span class="p">],</span>
+    <span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'River'</span><span class="p">],</span>
+    <span class="n">filt_area_dict</span><span class="p">[</span><span class="s">'County'</span><span class="p">]]</span>
+
+<span class="n">choices</span> <span class="o">=</span> <span class="p">[</span><span class="s">'Creek'</span><span class="p">,</span><span class="s">'Canal'</span><span class="p">,</span><span class="s">'Springs'</span><span class="p">,</span><span class="s">'Pond'</span><span class="p">,</span> <span class="s">'Swamp'</span><span class="p">,</span> <span class="s">'Marsh'</span><span class="p">,</span><span class="s">'Lake'</span><span class="p">,</span><span class="s">'River'</span><span class="p">,</span><span class="s">'WMA'</span><span class="p">,</span><span class="s">'WMA'</span><span class="p">,</span><span class="s">'STA'</span><span class="p">,</span><span class="s">'Marsh'</span><span class="p">,</span><span class="s">'Reservoir'</span><span class="p">,</span><span class="s">'County'</span><span class="p">,</span><span class="s">'County'</span><span class="p">,</span><span class="s">'Lake'</span><span class="p">,</span><span class="s">'River'</span><span class="p">,</span><span class="s">'County'</span><span class="p">]</span>
+
+<span class="n">clean_data</span><span class="p">[</span><span class="s">'geography'</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">conditions</span><span class="p">,</span> <span class="n">choices</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">'Unknown'</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'geography'</span><span class="p">]</span> <span class="o">==</span> <span class="s">'Unknown'</span><span class="p">][</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>463
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">### So we've got about 0.5% carcasses with no geography</span>
+
+<span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'geography'</span><span class="p">]</span> <span class="o">==</span> <span class="s">'Unknown'</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s">'Area Number'</span><span class="p">,</span><span class="s">'Area Name'</span><span class="p">])[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Area Number  Area Name                             
+542          BLUE CYPRESS WATER MANAGEMENT AREA        340
+112          TENEROC FMA                                39
+401          A.R.M. LOXAHATCHEE NWR                     36
+546          T.M. GOODWIN WATERFOWL MANAGEMENT AREA     29
+112          TENOROC FMA                                15
+839          LIBERTY                                     2
+819          FRANKLIN                                    2
+Name: Carcass Size, dtype: int64
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">'geography'</span><span class="p">)[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span> <span class="o">=</span> <span class="s">'bar'</span><span class="p">,</span> 
+                                                                                            <span class="n">title</span> <span class="o">=</span> <span class="s">'Carcass count by geography'</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e83cfac8&gt;
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_59_1.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'geography'</span><span class="p">]</span> <span class="o">==</span> <span class="s">'Lake'</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">'Area Name'</span><span class="p">)[</span><span class="s">'Carcass Size'</span>
+                                            <span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)[:</span><span class="mi">25</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span> <span class="o">=</span> <span class="s">'bar'</span><span class="p">,</span> 
+                                                                                    <span class="n">title</span> <span class="o">=</span> <span class="s">'Carcass count by Lake Area'</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e3600a58&gt;
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_60_1.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fig</span><span class="p">,</span> <span class="p">((</span><span class="n">ax1</span><span class="p">,</span><span class="n">ax2</span><span class="p">,</span><span class="n">ax3</span><span class="p">),(</span><span class="n">ax4</span><span class="p">,</span><span class="n">ax5</span><span class="p">,</span><span class="n">ax6</span><span class="p">),(</span><span class="n">ax7</span><span class="p">,</span><span class="n">ax8</span><span class="p">,</span><span class="n">ax9</span><span class="p">),(</span><span class="n">ax10</span><span class="p">,</span><span class="n">ax11</span><span class="p">,</span><span class="n">ax12</span><span class="p">))</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">25</span><span class="p">))</span>
+<span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="n">ax1</span><span class="p">,</span><span class="n">ax2</span><span class="p">,</span><span class="n">ax3</span><span class="p">,</span><span class="n">ax4</span><span class="p">,</span><span class="n">ax5</span><span class="p">,</span><span class="n">ax6</span><span class="p">,</span><span class="n">ax7</span><span class="p">,</span><span class="n">ax8</span><span class="p">,</span><span class="n">ax9</span><span class="p">,</span><span class="n">ax10</span><span class="p">,</span><span class="n">ax11</span><span class="p">,</span><span class="n">ax12</span><span class="p">]</span>
+
+<span class="n">geography_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'geography'</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+
+<span class="n">geography_names</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s">'Unknown'</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">area</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">geography_names</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="o">.</span><span class="n">geography</span> <span class="o">==</span> <span class="n">area</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s">'Area Name'</span><span class="p">])[</span><span class="s">'Carcass Size'</span>
+                                <span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="n">d</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">kind</span> <span class="o">=</span> <span class="s">'bar'</span><span class="p">,</span> <span class="n">title</span> <span class="o">=</span> <span class="s">'Top 10 </span><span class="si">%</span><span class="s">s'</span> <span class="o">%</span><span class="n">area</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">d</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">kind</span> <span class="o">=</span> <span class="s">'bar'</span><span class="p">,</span> <span class="n">title</span> <span class="o">=</span> <span class="s">'Top 10 </span><span class="si">%</span><span class="s">s'</span> <span class="o">%</span><span class="n">area</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+    
+    
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_61_0.png" alt="png" /></p>
+
+<h3 id="range-of-sizes">Range of sizes</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c">#average size over time</span>
+<span class="c">#range of sizes vs geography</span>
+<span class="c">#range of sizes vs top locations</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## first off, identify any lines where the Carcass Size is 0</span>
+
+<span class="n">zero_size</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">==</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
+
+<span class="c">## fill these missing data points with the average Carcass Size</span>
+
+<span class="n">clean_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">zero_size</span><span class="p">,</span><span class="s">'Carcass Size'</span><span class="p">]</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">!=</span><span class="mi">0</span><span class="p">][</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s">'box'</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e35bef28&gt;
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_65_1.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Identify the biggest catches ever</span>
+
+<span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span> <span class="o">==</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="nb">max</span><span class="p">()]</span>
+
+
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Year</th>
+      <th>Area Number</th>
+      <th>Area Name</th>
+      <th>Carcass Size</th>
+      <th>Harvest Date</th>
+      <th>Location</th>
+      <th>Harvest_Date</th>
+      <th>Month</th>
+      <th>Day</th>
+      <th>DayofWeek</th>
+      <th>Dayname</th>
+      <th>geography</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>44996</th>
+      <td>2010.0</td>
+      <td>502</td>
+      <td>ST. JOHNS RIVER (LAKE POINSETT)</td>
+      <td>4.3434</td>
+      <td>10-31-2010</td>
+      <td>NaN</td>
+      <td>2010-10-31</td>
+      <td>10.0</td>
+      <td>31.0</td>
+      <td>6.0</td>
+      <td>Sun</td>
+      <td>Lake</td>
+    </tr>
+    <tr>
+      <th>78315</th>
+      <td>2014.0</td>
+      <td>828</td>
+      <td>HIGHLANDS COUNTY</td>
+      <td>4.3434</td>
+      <td>10-28-2014</td>
+      <td>LITTLE RED WATER LAKE</td>
+      <td>2014-10-28</td>
+      <td>10.0</td>
+      <td>28.0</td>
+      <td>1.0</td>
+      <td>Tue</td>
+      <td>Lake</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Which locations have the most 4m (14 feet) or greater alligators?</span>
+
+<span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s">'Area Name'</span><span class="p">])[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Area Name
+LAKE GEORGE               10
+PUTNAM COUNTY              8
+LAKE JESUP                 5
+LAKE TOHOPEKALIGA          5
+LAKE COUNTY                5
+HIGHLANDS COUNTY           5
+CRESCENT LAKE              4
+LAKE OKEECHOBEE (WEST)     4
+LAKE GRIFFIN               3
+KISSIMMEE RIVER            3
+Name: Carcass Size, dtype: int64
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s">'hist'</span><span class="p">,</span><span class="n">bins</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">title</span> <span class="o">=</span> <span class="s">'Distribution of catches by carcass size'</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e2849080&gt;
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_68_1.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">df_by_year</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">title</span> <span class="o">=</span> <span class="s">'Carcass Size by month'</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e27a6c50&gt;
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_69_1.png" alt="png" /></p>
+
+<p>Interesting to note the dip in size around 2010.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s">'Area Name'</span><span class="p">])</span><span class="o">.</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1000</span>
+                                        <span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s">'Area Name'</span><span class="p">])[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span>
+                                        <span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s">'bar'</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s">'Average Carcass Size in Areas with more than 1000 catches'</span><span class="p">)</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e2288400&gt;
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_71_1.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">violinplot</span><span class="p">(</span><span class="n">x</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'geography'</span><span class="p">],</span> <span class="n">y</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">])</span>
+
+<span class="n">plot</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">labels</span> <span class="o">=</span> <span class="n">geography_names</span><span class="p">,</span><span class="n">rotation</span> <span class="o">=</span> <span class="mi">90</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p><img src="snap_analysis_files/snap_analysis_72_0.png" alt="png" /></p>
+
+<p>What about if I want to look for some smaller Alligators to get my eye in first?</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s">'Area Name'</span><span class="p">])[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">({</span><span class="s">'average size'</span><span class="p">:</span> <span class="s">'mean'</span><span class="p">})</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="s">'average size'</span><span class="p">,</span><span class="n">ascending</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/home/tms/anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:1: FutureWarning: using a dict on a Series for aggregation
+is deprecated and will be removed in a future version
+  """Entry point for launching an IPython kernel.
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>average size</th>
+    </tr>
+    <tr>
+      <th>Area Name</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>BRADFORD COUNTY</th>
+      <td>2.168309</td>
+    </tr>
+    <tr>
+      <th>FRANKLIN</th>
+      <td>2.171700</td>
+    </tr>
+    <tr>
+      <th>BAKER COUNTY</th>
+      <td>2.225239</td>
+    </tr>
+    <tr>
+      <th>UNION COUNTY</th>
+      <td>2.236519</td>
+    </tr>
+    <tr>
+      <th>LAKE ROUSSEAU</th>
+      <td>2.245573</td>
+    </tr>
+    <tr>
+      <th>SUWANNEE COUNTY</th>
+      <td>2.249251</td>
+    </tr>
+    <tr>
+      <th>OKALOOSA COUNTY</th>
+      <td>2.251529</td>
+    </tr>
+    <tr>
+      <th>PEACE RIVER NORTH</th>
+      <td>2.257245</td>
+    </tr>
+    <tr>
+      <th>WASHINGTON COUNTY</th>
+      <td>2.275885</td>
+    </tr>
+    <tr>
+      <th>SANTA ROSA COUNTY</th>
+      <td>2.288073</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">print</span><span class="p">(</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="nb">min</span><span class="p">())</span>
+
+<span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s">'Area Name'</span><span class="p">]</span>
+                            <span class="p">)[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">({</span><span class="s">'Number of catches less than 1m'</span><span class="p">:</span><span class="s">'count'</span><span class="p">}</span>
+                            <span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="s">'Number of catches less than 1m'</span><span class="p">,</span><span class="n">ascending</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span>
+
+
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0.3048
+
+
+/home/tms/anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:4: FutureWarning: using a dict on a Series for aggregation
+is deprecated and will be removed in a future version
+  after removing the cwd from sys.path.
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Number of catches less than 1m</th>
+    </tr>
+    <tr>
+      <th>Area Name</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>ORANGE LAKE</th>
+      <td>23</td>
+    </tr>
+    <tr>
+      <th>KISSIMMEE RIVER</th>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>ST. JOHNS RIVER (PUZZLE LAKE)</th>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>LAKE OKEECHOBEE (SOUTH)</th>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>LAKE HARNEY</th>
+      <td>9</td>
+    </tr>
+    <tr>
+      <th>LOCHLOOSA LAKE</th>
+      <td>9</td>
+    </tr>
+    <tr>
+      <th>LAKE TOHOPEKALIGA</th>
+      <td>7</td>
+    </tr>
+    <tr>
+      <th>LAKE OKEECHOBEE (WEST)</th>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>LAKE HATCHINEHA</th>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>POLK COUNTY</th>
+      <td>6</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>So, if you're looking for some big gators, get down to Lake Jesup (biggest average catch) or Lake George (most catches above 4m), and if you want something smaller to start off with, get to Bradford County (smallest average catch) or Orange Lake (largest number of catches less than 1m)</p>
+
+<h3 id="awwww-snap-thats-all-weve-got-time-for-catch-ya">Awwww, SNAP… That’s all we’ve got time for. Catch ya!</h3>
+
+<p>Tom Merritt Smith 2017
+Get in touch: tmerrittsmith (at) gmail (dot) com</p>
+
+<h4 id="postscript-march-2019">Postscript: March, 2019</h4>
+
+<p>A few things I would do next time:</p>
+
+<ul>
+  <li>map some of this stuff</li>
+  <li>consider something like vega/altair to make interactive plots</li>
+</ul>
+
+  </div>
+
+</article>
+
+
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Tom Merritt Smith - Data Scientist</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li>Tom Merritt Smith - Data Scientist</li>
+          <li><a href="mailto:tmerrittsmith@gmail.com">tmerrittsmith@gmail.com</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/tmerrittsmith"><span class="icon icon--github"><svg viewBox="0 0 16 16"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">tmerrittsmith</span></a>
+
+          </li>
+          
+
+          
+          <li>
+            <a href="https://twitter.com/tmrtsmith"><span class="icon icon--twitter"><svg viewBox="0 0 16 16"><path fill="#828282" d="M15.969,3.058c-0.586,0.26-1.217,0.436-1.878,0.515c0.675-0.405,1.194-1.045,1.438-1.809c-0.632,0.375-1.332,0.647-2.076,0.793c-0.596-0.636-1.446-1.033-2.387-1.033c-1.806,0-3.27,1.464-3.27,3.27 c0,0.256,0.029,0.506,0.085,0.745C5.163,5.404,2.753,4.102,1.14,2.124C0.859,2.607,0.698,3.168,0.698,3.767 c0,1.134,0.577,2.135,1.455,2.722C1.616,6.472,1.112,6.325,0.671,6.08c0,0.014,0,0.027,0,0.041c0,1.584,1.127,2.906,2.623,3.206 C3.02,9.402,2.731,9.442,2.433,9.442c-0.211,0-0.416-0.021-0.615-0.059c0.416,1.299,1.624,2.245,3.055,2.271 c-1.119,0.877-2.529,1.4-4.061,1.4c-0.264,0-0.524-0.015-0.78-0.046c1.447,0.928,3.166,1.469,5.013,1.469 c6.015,0,9.304-4.983,9.304-9.304c0-0.142-0.003-0.283-0.009-0.423C14.976,4.29,15.531,3.714,15.969,3.058z"/></svg>
+</span><span class="username">tmrtsmith</span></a>
+
+          </li>
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p></p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
