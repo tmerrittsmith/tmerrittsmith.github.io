@@ -12,10 +12,10 @@ Things I really enjoy:
 - writing unpythonic one-liners (think nested dictionary comprehensions)
 - ruining games with maths (markov decision processes, mcts, etc. et.)
 
-Things I'm interested in/want to get into:
+Things I'm interested in:
 - Topic modelling
 - NLP (especially short text documents)
 - Probabilistic graphical models
 - Using pytorch
 - Data feminism
-- Open data
+- Open data, but also finding the signal in the noise
