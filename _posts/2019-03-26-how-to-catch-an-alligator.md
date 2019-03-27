@@ -652,7 +652,7 @@ day_count.reindex(days).plot(kind='bar').set(ylabel = 'Number of Carcasses', tit
 
 
 
-![png](snap_analysis_files/snap_analysis_25_1.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_23_1.png)
 
 
 
@@ -682,7 +682,7 @@ yearplot.set(xlabel='Year',ylabel='Total Carcasses')
 
 
 
-![png](snap_analysis_files/snap_analysis_26_2.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_24_2.png)
 
 
 
@@ -706,7 +706,7 @@ plt.show()
 ```
 
 
-![png](snap_analysis_files/snap_analysis_27_0.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_24_2.png)
 
 
 ### Observations
@@ -1711,7 +1711,7 @@ clean_data.groupby('geography')['Carcass Size'].count().sort_values(ascending = 
 
 
 
-![png](snap_analysis_files/snap_analysis_59_1.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_56_1.png)
 
 
 
@@ -1731,7 +1731,7 @@ clean_data[clean_data['geography'] == 'Lake'].groupby('Area Name')['Carcass Size
 
 
 
-![png](snap_analysis_files/snap_analysis_60_1.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_57_1.png)
 
 
 
@@ -1763,7 +1763,7 @@ plt.show()
 ```
 
 
-![png](snap_analysis_files/snap_analysis_61_0.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_58_0.png)
 
 
 ### Range of sizes
@@ -1806,7 +1806,7 @@ clean_data['Carcass Size'].plot(kind='box')
 
 
 
-![png](snap_analysis_files/snap_analysis_65_1.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_62_1.png)
 
 
 
@@ -1932,7 +1932,7 @@ clean_data['Carcass Size'].plot(kind='hist',bins = 50, title = 'Distribution of 
 
 
 
-![png](snap_analysis_files/snap_analysis_68_1.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_65_1.png)
 
 
 
@@ -1950,7 +1950,7 @@ df_by_year['Carcass Size'].mean().plot(title = 'Carcass Size by month')
 
 
 
-![png](snap_analysis_files/snap_analysis_69_1.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_66_1.png)
 
 
 
@@ -1974,7 +1974,7 @@ clean_data.groupby(['Area Name']).filter(lambda x: x['Carcass Size'].count() > 1
 
 
 
-![png](snap_analysis_files/snap_analysis_71_1.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_68_1.png)
 
 
 
@@ -1987,7 +1987,7 @@ plt.show()
 ```
 
 
-![png](snap_analysis_files/snap_analysis_72_0.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_69_0.png)
 
 
 

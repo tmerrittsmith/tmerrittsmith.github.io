@@ -629,7 +629,7 @@
  Text(0.5, 1.0, 'Average Carcasses per day 2000 - 2015')]
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_25_1.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_23_1.png" alt="png" /></p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Time series of number of catches over years</span>
 
@@ -654,7 +654,7 @@
 [Text(0, 0.5, 'Total Carcasses'), Text(0.5, 0, 'Year')]
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_26_2.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_24_2.png" alt="png" /></p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fig</span><span class="p">,</span> <span class="n">axarray</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">12</span><span class="p">),</span> <span class="n">sharey</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
 
@@ -674,7 +674,7 @@
 
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_27_0.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_24_0.png" alt="png" /></p>
 
 <h3 id="observations">Observations</h3>
 
@@ -1562,7 +1562,7 @@ Name: Carcass Size, dtype: int64
 <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e83cfac8&gt;
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_59_1.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_56_1.png" alt="png" /></p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">clean_data</span><span class="p">[</span><span class="n">clean_data</span><span class="p">[</span><span class="s">'geography'</span><span class="p">]</span> <span class="o">==</span> <span class="s">'Lake'</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">'Area Name'</span><span class="p">)[</span><span class="s">'Carcass Size'</span>
                                             <span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)[:</span><span class="mi">25</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span> <span class="o">=</span> <span class="s">'bar'</span><span class="p">,</span> 
@@ -1574,7 +1574,7 @@ Name: Carcass Size, dtype: int64
 <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e3600a58&gt;
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_60_1.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_57_1.png" alt="png" /></p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fig</span><span class="p">,</span> <span class="p">((</span><span class="n">ax1</span><span class="p">,</span><span class="n">ax2</span><span class="p">,</span><span class="n">ax3</span><span class="p">),(</span><span class="n">ax4</span><span class="p">,</span><span class="n">ax5</span><span class="p">,</span><span class="n">ax6</span><span class="p">),(</span><span class="n">ax7</span><span class="p">,</span><span class="n">ax8</span><span class="p">,</span><span class="n">ax9</span><span class="p">),(</span><span class="n">ax10</span><span class="p">,</span><span class="n">ax11</span><span class="p">,</span><span class="n">ax12</span><span class="p">))</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">25</span><span class="p">))</span>
 <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="n">ax1</span><span class="p">,</span><span class="n">ax2</span><span class="p">,</span><span class="n">ax3</span><span class="p">,</span><span class="n">ax4</span><span class="p">,</span><span class="n">ax5</span><span class="p">,</span><span class="n">ax6</span><span class="p">,</span><span class="n">ax7</span><span class="p">,</span><span class="n">ax8</span><span class="p">,</span><span class="n">ax9</span><span class="p">,</span><span class="n">ax10</span><span class="p">,</span><span class="n">ax11</span><span class="p">,</span><span class="n">ax12</span><span class="p">]</span>
@@ -1602,7 +1602,7 @@ Name: Carcass Size, dtype: int64
 
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_61_0.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_58_0.png" alt="png" /></p>
 
 <h3 id="range-of-sizes">Range of sizes</h3>
 
@@ -1633,7 +1633,7 @@ Name: Carcass Size, dtype: int64
 <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e35bef28&gt;
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_65_1.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_62_1.png" alt="png" /></p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">## Identify the biggest catches ever</span>
 
@@ -1738,7 +1738,7 @@ Name: Carcass Size, dtype: int64
 <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e2849080&gt;
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_68_1.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_65_1.png" alt="png" /></p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">df_by_year</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">title</span> <span class="o">=</span> <span class="s">'Carcass Size by month'</span><span class="p">)</span>
 
@@ -1748,7 +1748,7 @@ Name: Carcass Size, dtype: int64
 <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e27a6c50&gt;
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_69_1.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_66_1.png" alt="png" /></p>
 
 <p>Interesting to note the dip in size around 2010.</p>
 
@@ -1762,7 +1762,7 @@ Name: Carcass Size, dtype: int64
 <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x7f38e2288400&gt;
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_71_1.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_68_1.png" alt="png" /></p>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">violinplot</span><span class="p">(</span><span class="n">x</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'geography'</span><span class="p">],</span> <span class="n">y</span> <span class="o">=</span> <span class="n">clean_data</span><span class="p">[</span><span class="s">'Carcass Size'</span><span class="p">])</span>
 
@@ -1771,7 +1771,7 @@ Name: Carcass Size, dtype: int64
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div></div>
 
-<p><img src="snap_analysis_files/snap_analysis_72_0.png" alt="png" /></p>
+<p><img src="/assets/images/snap_analysis_files/snap_analysis_69_0.png" alt="png" /></p>
 
 <p>What about if I want to look for some smaller Alligators to get my eye in first?</p>
 
