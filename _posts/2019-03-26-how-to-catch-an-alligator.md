@@ -706,7 +706,7 @@ plt.show()
 ```
 
 
-![png](/assets/images/snap_analysis_files/snap_analysis_24_2.png)
+![png](/assets/images/snap_analysis_files/snap_analysis_25_0.png)
 
 
 ### Observations
