@@ -1,3 +1,7 @@
+---
+layout: post
+mathjax: true
+---
 ```python
 import pandas as pd
 from sklearn.decomposition import LatentDirichletAllocation
