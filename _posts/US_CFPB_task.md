@@ -30,6 +30,8 @@ This investigation is split into three sections:
 
 ### [Conclusion](#fin)
 
+On my [github](www.github.com/tmerrittsmith) page, I have another notebook where I tried some neural net approaches. However, the performance wasn't as good as Logistic Regression used here.
+
 <a id='eda'></a>
 
 ## Exploratory Data Analysis
